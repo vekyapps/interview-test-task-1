@@ -38,8 +38,8 @@ class Device(Base):
     name = db.Column(db.String(32), nullable=False)
     description = db.Column(db.TEXT)
     code = db.Column(db.String(30), unique=True, nullable=False)
-    date_created = db.Column(db.DateTime(timezone=True))
-    date_updated = db.Column(db.DateTime(timezone=True))
+    date_created = db.Column(db.DateTime(timezone=True), default=datetime.datetime.utcnow)
+    date_updated = db.Column(db.DateTime(timezone=True), default=datetime.datetime.utcnow)
     status = db.Column(db.Enum('enabled', 'disabled', 'deleted'), nullable=False)
 
     @validates('name')
@@ -56,11 +56,13 @@ class Content(Base):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100))
     description = db.Column(db.TEXT)
-    device = db.Column(db.Integer)
-    date_created = db.Column(db.DateTime(timezone=True))
-    date_updated = db.Column(db.DateTime(timezone=True))
+    device_id = db.Column(db.Integer, db.ForeignKey("devices.id"))
+    device = db.relationship('Device', backref='content')
+
+    date_created = db.Column(db.DateTime(timezone=True), default=datetime.datetime.utcnow)
+    date_updated = db.Column(db.DateTime(timezone=True), default=datetime.datetime.utcnow)
     expire_date = db.Column(db.DateTime(timezone=True), default=datetime.datetime.utcnow)
-    status = db.Column(db.Enum('enabled', 'disabled', 'deleted'))
+    status = db.Column(db.Enum('enabled', 'disabled', 'deleted'), nullable=False)
 
 Base.metadata.create_all(bind=engine)
 
@@ -100,21 +102,34 @@ def import_data():
         default_separator = ","
     with open(devices_file) as f:
         for line in f.readlines():
+            line = line.rstrip().rstrip(",")
             attributes = line.split(default_separator)
+            row_data = {}
+            if attributes[1]:
+                row_data['name'] = attributes[1]
+
+            if attributes[2]:
+                row_data['description'] = attributes[2]
+            try:
+                device = Device(**{'name': ''})
+            except AssertionError as e:
+                pass
 
     with open(content_file) as f:
-        pass
+        for line in f.readlines():
+            line = line.rstrip().rstrip(",")
+            attributes = line.split(default_separator)
 
     try:
         device = Device(**{'name': ''})
         db.session.add(device)
         db.session.commit()
         output = {'success': True, 'msg': 'Successfully imported!'}
-    except AssertionError as exception_message:
-        app.logger.error('Cannot import csv files to database, error: '+str(exception_message))
-        output = {'success': False, 'msg': 'There was an error during the operation!'}
+    except AssertionError as e:
+        app.logger.error('Data error! Cannot import csv files to database, error: '+str(e))
+        output = {'success': False, 'msg': 'There was an error during the operation! Please check CSV files that you are sending.'}
     except exc.SQLAlchemyError as e:
-        app.logger.error('Cannot import csv files to database, error: '+str(e))
+        app.logger.error('Database error! Cannot import csv files to database, error: '+str(e))
         output = {'success': False, 'msg': 'There was an error during the operation!'}
 
     return jsonify(output)
