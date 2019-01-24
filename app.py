@@ -12,7 +12,7 @@ app.config.from_object('config')
 db = SQLAlchemy(app)
 
 from sqlalchemy import create_engine, exc
-from sqlalchemy.orm import scoped_session, sessionmaker
+from sqlalchemy.orm import scoped_session, sessionmaker, validates
 from sqlalchemy.ext.declarative import declarative_base
 
 
@@ -35,12 +35,21 @@ app.logger.addHandler(file_handler)
 class Device(Base):
     __tablename__ = 'devices'
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(32))
+    name = db.Column(db.String(32), nullable=False)
     description = db.Column(db.TEXT)
-    code = db.Column(db.String(30), unique=True)
-    date_created = db.Column(db.DateTime)
-    date_updated = db.Column(db.DateTime)
-    status = db.Column(db.Enum('enabled', 'disabled', 'deleted'))
+    code = db.Column(db.String(30), unique=True, nullable=False)
+    date_created = db.Column(db.DateTime(timezone=True))
+    date_updated = db.Column(db.DateTime(timezone=True))
+    status = db.Column(db.Enum('enabled', 'disabled', 'deleted'), nullable=False)
+
+    @validates('name')
+    def validate_username(self, key, name):
+        if not name:
+            raise AssertionError('No name provided')
+        if len(name) < 1 or len(name) > 32:
+            raise AssertionError('Name can contain max. 32 chars.')
+
+        return name
 
 class Content(Base):
     __tablename__ = 'contents'
@@ -86,16 +95,24 @@ def import_data():
     if not os.path.isfile(content_file) or not os.access(content_file, os.R_OK):
         return jsonify({'success': True, 'msg': 'Content file is missing!'})
 
+    default_separator = app.config.get('DEFAULT_CSV_SEPARATOR')
+    if not default_separator:
+        default_separator = ","
     with open(devices_file) as f:
-        pass
+        for line in f.readlines():
+            attributes = line.split(default_separator)
 
     with open(content_file) as f:
         pass
-    #device = Device(**{'name': 'test'})
-    db.session.add(device)
+
     try:
+        device = Device(**{'name': ''})
+        db.session.add(device)
         db.session.commit()
         output = {'success': True, 'msg': 'Successfully imported!'}
+    except AssertionError as exception_message:
+        app.logger.error('Cannot import csv files to database, error: '+str(exception_message))
+        output = {'success': False, 'msg': 'There was an error during the operation!'}
     except exc.SQLAlchemyError as e:
         app.logger.error('Cannot import csv files to database, error: '+str(e))
         output = {'success': False, 'msg': 'There was an error during the operation!'}
@@ -107,7 +124,6 @@ def import_data():
 @app.errorhandler(500)
 def internal_error(error):
     return render_template('errors/500.html'), 500
-
 
 @app.errorhandler(404)
 def not_found_error(error):
