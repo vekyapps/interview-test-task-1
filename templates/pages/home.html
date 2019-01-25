@@ -1,91 +1,261 @@
 {% extends "base.html" %}
 
-
 {% block content %}
 
-test viewova
 
-
-<div id="jsGrid"></div>
-<div id="pager-container"></div>
+<div id="mainPanelContainer"></div>
 
 <script>
-    $(document).ready(function () {
+    Ext.onReady(function () {
 
-        var clients = [
-            {"Name": "Otto Clay", "Age": 25, "Country": 1, "Address": "Ap #897-1459 Quam Avenue", "Married": false},
-            {"Name": "Connor Johnston", "Age": 45, "Country": 2, "Address": "Ap #370-4647 Dis Av.", "Married": true},
-            {"Name": "Lacey Hess", "Age": 29, "Country": 3, "Address": "Ap #365-8835 Integer St.", "Married": false},
-            {"Name": "Timothy Henson", "Age": 56, "Country": 1, "Address": "911-5143 Luctus Ave", "Married": true},
-            {
-                "Name": "Ramona Benton",
-                "Age": 32,
-                "Country": 3,
-                "Address": "Ap #614-689 Vehicula Street",
-                "Married": false
+        var storeTree = Ext.create('Ext.data.TreeStore', {
+            proxy: {
+                type: 'ajax',
+                url: '/folders',
+                reader: {
+                    type: 'json',
+                    rootProperty: 'data'
+                },
+                autoLoad: true
             }
-        ];
-
-        var countries = [
-            {Name: "", Id: 0},
-            {Name: "United States", Id: 1},
-            {Name: "Canada", Id: 2},
-            {Name: "United Kingdom", Id: 3}
-        ];
-
-        $("#jsGrid").jsGrid({
-            width: "100%",
-            height: "500px",
-
-            inserting: false,
-            editing: false,
-            sorting: true,
-            paging: true,
-            filtering: true,
-            autoload: true,
-            pageLoading: true,
-
-            data: clients,
-
-            controller: {
-                loadData: function (filter) {
-                    console.log(filter);
-                    $.ajax({
-                        type: "POST",
-                        url: '/search',
-                        data: filter,
-                        success: function(data, textStatus, jqXHR ){
-                            console.log(data);
-                            console.log(textStatus);
-                        },
-                        dataType: 'json'
-                    });
-                }
-            },
-
-            fields: [
-                {name: "Name", type: "text", width: 150, validate: "required"},
-                {name: "Age", type: "number", width: 50},
-                {name: "Address", type: "text", width: 200},
-                {name: "Country", type: "select", items: countries, valueField: "Id", textField: "Name"},
-                {name: "Married", type: "checkbox", title: "Is Married", sorting: false},
-                {type: "control"}
-            ],
-            pageIndex: 1,
-            pageSize: 2,
-            pageButtonCount: 2,
-            pagerFormat: "Pages: {first} {prev} {pages} {next} {last}    {pageIndex} of {pageCount}",
-            pagePrevText: "Prev",
-            pageNextText: "Next",
-            pageFirstText: "First",
-            pageLastText: "Last",
-            pageNavigatorNextText: "...",
-            pageNavigatorPrevText: "...",
-            pagerContainer: "pager-container",
-            itemsCount: clients.length
         });
 
 
+        var shows = Ext.create('Ext.data.Store', {
+            fields: [
+                'id', 'show'
+            ],
+            data: [{
+                id: 0,
+                show: 'Battlestar Galactica'
+            }, {
+                id: 1,
+                show: 'Doctor Who'
+            }, {
+                id: 2,
+                show: 'Farscape'
+            }, {
+                id: 3,
+                show: 'Firefly'
+            }, {
+                id: 4,
+                show: 'Star Trek'
+            }, {
+                id: 5,
+                show: 'Star Wars: Christmas Special'
+            }]
+        });
+
+        Ext.create('Ext.Panel', {
+            id: 'mainPanel',
+            renderTo: 'mainPanelContainer',
+            width: 800,
+            title: 'Devices & contents',
+            layout: {
+                type: 'hbox',
+                align: 'stretch'
+            },
+            items: [
+                {
+                    xtype: 'container',
+                    flex: 2,
+                    layout: {
+                        type: 'vbox',
+                        align: 'stretch'
+                    },
+                    items: [
+                        {
+                            xtype: 'grid',
+                            title: 'Devices',
+                            height: 250,
+                            width: 250,
+                            store: shows,
+                            plugins: 'gridfilters',
+                            selType: 'rowmodel',
+                            selModel: {
+                                mode: 'SINGLE'
+                            },
+                            viewConfig: {
+                                stripeRows: true
+                            },
+                            dockedItems: [{
+                                xtype: 'pagingtoolbar',
+                                store: shows, // same store GridPanel is using
+                                dock: 'bottom',
+                                displayInfo: true
+                            }],
+                            columns: [{
+                                dataIndex: 'code',
+                                text: 'Code',
+                                flex: 1
+                            }, {
+                                dataIndex: 'name',
+                                text: 'Name',
+                                flex: 1
+                            }, {
+                                dataIndex: 'description',
+                                text: 'Description',
+                                flex: 1
+                            }, {
+                                dataIndex: 'created',
+                                text: 'Created',
+                                flex: 1
+                            }, {
+                                dataIndex: 'updated',
+                                text: 'Updated',
+                                flex: 1
+                            }, {
+                                dataIndex: 'expire_date',
+                                text: 'Expire',
+                                flex: 1
+                            }, {
+                                dataIndex: 'status',
+                                text: 'Status',
+                                flex: 1
+                            }]
+                        }, {
+                            xtype: 'grid',
+                            flex: 1,
+                            title: 'Contents',
+                            store: shows,
+                            plugins: 'gridfilters',
+                            selType: 'rowmodel',
+                            selModel: {
+                                mode: 'SINGLE'
+                            },
+                            viewConfig: {
+                                stripeRows: true
+                            },
+                            dockedItems: [{
+                                xtype: 'pagingtoolbar',
+                                store: shows, // same store GridPanel is using
+                                dock: 'bottom',
+                                displayInfo: true
+                            }],
+                            columns: [{
+                                dataIndex: 'name',
+                                text: 'Name',
+                                flex: 1
+                            }, {
+                                dataIndex: 'description',
+                                text: 'Description',
+                                flex: 1
+                            }, {
+                                dataIndex: 'created',
+                                text: 'Created',
+                                flex: 1
+                            }, {
+                                dataIndex: 'updated',
+                                text: 'Updated',
+                                flex: 1
+                            }, {
+                                dataIndex: 'expire_date',
+                                text: 'Expire',
+                                flex: 1
+                            }, {
+                                dataIndex: 'status',
+                                text: 'Status',
+                                flex: 1
+                            }]
+                        }
+                    ]
+                }, {
+                    xtype: 'container',
+                    flex: 1,
+                    layout: {
+                        type: 'vbox',
+                        align: 'stretch'
+                    },
+                    items: [
+                        {
+                            xtype: 'treepanel',
+                            title: 'Folder structure',
+                            flex: 1,
+                            useArrows: false,
+                            rootVisible: false,
+                            store: storeTree,
+                            multiSelect: false,
+                            listeners: {
+                                select: function (grid, record) {
+
+                                    function treeParse(record, dirList='') {
+                                        if (record.parentNode) {
+                                            dirList += record.get('text')+'/'+treeParse(record.parentNode, dirList);
+                                            return dirList;
+                                        } else {
+                                            return '';
+                                        }
+                                    }
+
+                                    var path = treeParse(record);
+                                    var panel = Ext.getCmp('mainPanel');
+                                    var importSourceField = panel.down('textfield[name="import_source"]');
+                                    importSourceField.setValue(path);
+                                    console.log(importSourceField);
+                                }
+                            }
+
+                        }, {
+                            xtype: 'panel',
+                            layout: {
+                                type: 'vbox',
+                                align: 'stretch'
+                            },
+                            bodyPadding: 15,
+                            items: [{
+                                xtype: 'textfield',
+                                name: 'import_source',
+                                labelAlign: 'top',
+                                allowBlank: false,
+                                editable:false,
+                                flex: 1,
+                                fieldLabel: 'Import source'
+                            }, {
+                                xtype: 'textfield',
+                                name: 'csv_separator',
+                                labelAlign: 'top',
+                                allowBlank: false,
+                                value: ',',
+                                flex: 1,
+                                fieldLabel: 'CSV separator'
+                            }, {
+                                xtype: 'button',
+                                width: 100,
+                                text: 'Import data',
+                                handler: function (btn) {
+                                    var panel = btn.up('panel');
+                                    var importSourceField = panel.down('textfield[name="import_source"]');
+                                    var csvSeparatorField = panel.down('textfield[name="csv_separator"]');
+                                    if (!importSourceField.getValue() || !csvSeparatorField.getValue()) {
+                                        return;
+                                    }
+                                    var obj = {
+                                        import_source: importSourceField.getValue(),
+                                        csv_sep: csvSeparatorField.getValue()
+                                    };
+                                    console.log(obj);
+                                    Ext.Ajax.request({
+                                        url: 'http://localhost/importData',
+                                        method: 'POST',
+                                        params: obj,
+                                        success: function (response, opts) {
+                                            var obj = Ext.decode(response.responseText);
+                                            console.dir(obj);
+                                        },
+
+                                        failure: function (response, opts) {
+                                            console.log(
+                                                'server-side failure with status code ' +
+                                                response.status);
+                                        }
+                                    });
+                                }
+                            }]
+                        }
+                    ]
+                }
+            ]
+        });
     });
 </script>
 
