@@ -75,8 +75,20 @@ def home():
     return render_template('pages/home.html')
 
 
-@app.route('/search', methods=['POST'])
-def search():
+@app.route('/devices', methods=['POST'])
+def devices():
+    try:
+        db.session.commit()
+        output = {'success': True, 'data': 'Successfully imported!'}
+    except exc.SQLAlchemyError as e:
+        app.logger.error('Cannot fetch data from database, error: '+str(e))
+        output = {'success': False, 'msg': 'Cannot fetch data from database!'}
+
+    return jsonify(output)
+
+
+@app.route('/contents', methods=['POST'])
+def contents():
     try:
         db.session.commit()
         output = {'success': True, 'data': 'Successfully imported!'}
@@ -134,6 +146,23 @@ def import_data():
 
     return jsonify(output)
 
+
+def directory_walk(path):
+    directories = []
+    with os.scandir(path) as it:
+        for entry in it:
+            if entry.is_dir():
+                children = directory_walk(path+os.sep+entry.name)
+                directories.append({
+                    "text": entry.name,
+                    "data": children
+                })
+    return directories
+
+@app.route('/folders', methods=['GET'])
+def get_folders():
+    output = directory_walk(os.path.join(basedir, 'uploads'))
+    return jsonify({'success': True, 'data': output})
 
 # Error handlers.
 @app.errorhandler(500)
