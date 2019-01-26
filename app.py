@@ -6,9 +6,7 @@ import logging
 from logging import Formatter, FileHandler
 import os
 
-import csv
-from dateutil.parser import parse
-from cerberus import Validator
+import utility
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 
@@ -20,18 +18,6 @@ from database import db_session
 from sqlalchemy import exc
 import models
 
-
-
-# from sqlalchemy import create_engine, exc
-from sqlalchemy.orm import scoped_session, sessionmaker, validates
-from sqlalchemy.ext.declarative import declarative_base
-
-# engine = create_engine('sqlite:///database.db', echo=True)
-# db_session = scoped_session(sessionmaker(autocommit=False,
-#                                          autoflush=False,
-#                                          bind=engine))
-# Base = declarative_base()
-# Base.query = db_session.query_property()
 
 # Configure logging
 file_handler = FileHandler(os.path.join(basedir, 'logs', 'error.log'))
@@ -52,62 +38,7 @@ def shutdown_session(exception=None):
 
 
 ###################### LOGIC
-def int_convert(value):
-    if value.isdigit():
-        return int(value)
 
-    return None
-
-
-def date_convert(value):
-    try:
-        date = parse(value)
-    except ValueError:
-        date = None
-
-    return date
-
-
-def parse_func(**kwargs):
-    if ('schema' not in kwargs or
-            'lookup_indexes' not in kwargs or
-            'filepath' not in kwargs):
-        return False
-
-    filepath = kwargs['filepath']
-    if (not os.path.isfile(filepath) or
-            not os.access(filepath, os.R_OK)):
-        return False
-
-    if 'delimiter' in kwargs:
-        delimiter = kwargs['delimiter']
-    else:
-        delimiter = ','
-
-    v = Validator(kwargs['schema'])
-    valid_documents = []
-    valid_indexes = kwargs['lookup_indexes']
-    with open(filepath) as f:
-        rows = csv.reader(f, delimiter=delimiter, quoting=csv.QUOTE_ALL)
-        for row in rows:
-            current_document = {}
-            for index, column in enumerate(row):
-                if not index in valid_indexes:
-                    continue
-
-                column = column.strip()
-                if 'convert_function' in valid_indexes[index] and callable(valid_indexes[index]['convert_function']):
-                    column = valid_indexes[index]['convert_function'](column)
-
-                current_document[valid_indexes[index]['name']] = column
-
-            if v.validate(current_document):
-                valid_documents.append(current_document)
-            else:
-                # TODO: invalid document
-                pass
-
-    return valid_documents
 
 
 @app.route('/')
@@ -213,7 +144,7 @@ def import_data():
     valid_indexes = {
         0: {
             'name': 'id',
-            'convert_function': int_convert
+            'convert_function': utility.int_convert
         },
         1: {
             'name': 'name'
@@ -230,7 +161,7 @@ def import_data():
     }
 
     filepath_devices = os.path.join(filepath, 'devices.csv')
-    device_documents = parse_func(
+    device_documents = utility.parse_func(
         schema=schema,
         filepath=filepath_devices,
         lookup_indexes=valid_indexes,
@@ -272,11 +203,11 @@ def import_data():
         },
         3: {
             'name': 'device',
-            'convert_function': int_convert
+            'convert_function': utility.int_convert
         },
         4: {
             'name': 'expire_date',
-            'convert_function': date_convert
+            'convert_function': utility.date_convert
         },
         5: {
             'name': 'status'
@@ -284,7 +215,7 @@ def import_data():
     }
 
     filepath_content = os.path.join(filepath, 'content.csv')
-    content_documents = parse_func(
+    content_documents = utility.parse_func(
         schema=schema,
         filepath=filepath_content,
         lookup_indexes=valid_indexes,
@@ -323,25 +254,10 @@ def import_data():
 
     return jsonify(output)
 
-
-def directory_walk(path):
-    directories = []
-    with os.scandir(path) as it:
-        for entry in it:
-            if entry.is_dir():
-                children = directory_walk(path + os.sep + entry.name) # OS independent directory walk
-                directories.append({
-                    "text": entry.name,
-                    "data": children
-                })
-    return directories
-
-
 @app.route('/folders', methods=['GET'])
 def get_folders():
-    output = directory_walk(os.path.join(basedir, 'uploads'))
+    output = utility.directory_walk(os.path.join(basedir, 'uploads'))
     return jsonify({'success': True, 'data': output})
-
 
 # Error handlers.
 @app.errorhandler(500)
@@ -352,9 +268,6 @@ def internal_error(error):
 @app.errorhandler(404)
 def not_found_error(error):
     return render_template('errors/404.html'), 404
-
-
-
 
 if __name__ == '__main__':
     app.run(host='127.0.0.1', port=5001)
