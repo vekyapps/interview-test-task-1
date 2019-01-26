@@ -1,7 +1,6 @@
 from flask import Flask, render_template, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
-from flask_paginate import Pagination, get_page_parameter
 
 import logging
 from logging import Formatter, FileHandler
@@ -20,6 +19,8 @@ db = SQLAlchemy(app)
 from database import db_session
 from sqlalchemy import exc
 import models
+
+
 
 # from sqlalchemy import create_engine, exc
 from sqlalchemy.orm import scoped_session, sessionmaker, validates
@@ -51,8 +52,6 @@ def shutdown_session(exception=None):
 
 
 ###################### LOGIC
-
-
 def int_convert(value):
     if value.isdigit():
         return int(value)
@@ -132,7 +131,11 @@ def devices():
             data.append({
                 'id': device.id,
                 'name': device.name,
-                'code': device.code
+                'code': device.code,
+                'description': device.description,
+                'date_created': device.date_created,
+                'date_updated': device.date_updated,
+                'status': device.status
             })
         output = {'success': True, 'data': data}
     except exc.SQLAlchemyError as e:
@@ -155,7 +158,12 @@ def contents():
         for content in contents:
             data.append({
                 'id': content.id,
-                'name': content.name
+                'name': content.name,
+                'description': content.description,
+                'date_created': content.date_created,
+                'date_updated': content.date_updated,
+                'expire_date': content.expire_date,
+                'status': content.status
             })
         output = {'success': True, 'data': data}
     except exc.SQLAlchemyError as e:
@@ -228,7 +236,8 @@ def import_data():
         lookup_indexes=valid_indexes,
         delimiter=delimiter
     )
-    print(docs)
+    if docs == False:
+        return jsonify({'success': False, 'msg': 'Invalid configuration provided for parsing devices csv file'})
 
     # content
     schema = {
@@ -281,6 +290,10 @@ def import_data():
         lookup_indexes=valid_indexes,
         delimiter=delimiter
     )
+
+    if docs == False:
+        return jsonify({'success': False, 'msg': 'Invalid configuration provided for parsing content csv file'})
+
     print(docs)
     return jsonify({'success':True})
     try:
@@ -327,6 +340,8 @@ def internal_error(error):
 @app.errorhandler(404)
 def not_found_error(error):
     return render_template('errors/404.html'), 404
+
+
 
 
 if __name__ == '__main__':

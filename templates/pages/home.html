@@ -31,11 +31,18 @@
                     mapping: 'id',
                     type: 'integer'
                 }, {
-                    name: 'name',
-                    mapping: 'name'
+                    name: 'code'
                 }, {
-                    name: 'code',
-                    mapping: 'code'
+                    name: 'description'
+                }, {
+                    name: 'name'
+                }, {
+                    name: 'status'
+                }, {
+                    name:'date_created'
+                    //,renderer: Ext.util.Format.dateRenderer
+                }, {
+                    name:'date_updated'
                 }
             ],
             proxy: {
@@ -57,11 +64,17 @@
                     mapping: 'id',
                     type: 'integer'
                 }, {
-                    name: 'name',
-                    mapping: 'name'
+                    name: 'name'
                 }, {
-                    name: 'code',
-                    mapping: 'code'
+                    name: 'date_created'
+                }, {
+                    name: 'date_updated'
+                }, {
+                    name: 'status'
+                },{
+                    name: 'description'
+                }, {
+                    name: 'expire_date'
                 }
             ],
             proxy: {
@@ -95,6 +108,7 @@
                         {
                             xtype: 'grid',
                             title: 'Devices',
+                            id: 'devicesGrid',
                             flex: 1,
                             height: 350,
                             store: devicesStore,
@@ -108,6 +122,7 @@
                             },
                             listeners: {
                                 select: function (rowModel, record) {
+                                    Ext.getCmp('contentGrid').setDisabled(false);
                                     contentStore.getProxy().setExtraParam('device_id', record.get('id'));
                                     contentStore.load();
                                 }
@@ -131,11 +146,11 @@
                                 text: 'Description',
                                 flex: 1
                             }, {
-                                dataIndex: 'created',
+                                dataIndex: 'date_created',
                                 text: 'Created',
                                 flex: 1
                             }, {
-                                dataIndex: 'updated',
+                                dataIndex: 'date_updated',
                                 text: 'Updated',
                                 flex: 1
                             }, {
@@ -145,7 +160,9 @@
                             }]
                         }, {
                             xtype: 'grid',
+                            id: 'contentGrid',
                             flex: 1,
+                            disabled: true,
                             height: 350,
                             title: 'Contents',
                             store: contentStore,
@@ -172,16 +189,16 @@
                                 text: 'Description',
                                 flex: 1
                             }, {
-                                dataIndex: 'created',
+                                dataIndex: 'date_created',
                                 text: 'Created',
                                 flex: 1
                             }, {
-                                dataIndex: 'updated',
+                                dataIndex: 'date_updated',
                                 text: 'Updated',
                                 flex: 1
                             }, {
                                 dataIndex: 'expire_date',
-                                text: 'Expire',
+                                text: 'Expire date',
                                 flex: 1
                             }, {
                                 dataIndex: 'status',
@@ -200,6 +217,7 @@
                     items: [
                         {
                             xtype: 'treepanel',
+                            id: 'treePanel',
                             title: 'Folder structure',
                             flex: 1,
                             useArrows: false,
@@ -278,6 +296,11 @@
                                         params: obj,
                                         success: function (response, opts) {
                                             var obj = Ext.decode(response.responseText);
+                                            importSourceField.setValue(null);
+                                            Ext.getCmp('devicesGrid').getSelectionModel().deselectAll();
+                                            Ext.getCmp('treePanel').getSelectionModel().deselectAll();
+                                            Ext.getCmp('contentGrid').setDisabled(true);
+                                            contentStore.removeAll();
                                             if (obj && obj.success) {
                                                 var title;
                                                 var msg;
