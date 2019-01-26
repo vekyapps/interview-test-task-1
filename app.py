@@ -69,9 +69,9 @@ def date_convert(value):
 
 
 def parse_func(**kwargs):
-    if (not 'schema' in kwargs or
-            not 'lookup_indexes' in kwargs or
-            not 'filepath' in kwargs):
+    if ('schema' not in kwargs or
+            'lookup_indexes' not in kwargs or
+            'filepath' not in kwargs):
         return False
 
     filepath = kwargs['filepath']
@@ -90,7 +90,7 @@ def parse_func(**kwargs):
     with open(filepath) as f:
         rows = csv.reader(f, delimiter=delimiter, quoting=csv.QUOTE_ALL)
         for row in rows:
-            currentDoc = {}
+            current_document = {}
             for index, column in enumerate(row):
                 if not index in valid_indexes:
                     continue
@@ -99,10 +99,10 @@ def parse_func(**kwargs):
                 if 'convert_function' in valid_indexes[index] and callable(valid_indexes[index]['convert_function']):
                     column = valid_indexes[index]['convert_function'](column)
 
-                currentDoc[valid_indexes[index]['name']] = column
+                current_document[valid_indexes[index]['name']] = column
 
-            if v.validate(currentDoc):
-                valid_documents.append(currentDoc)
+            if v.validate(current_document):
+                valid_documents.append(current_document)
             else:
                 # TODO: invalid document
                 pass
@@ -149,10 +149,10 @@ def devices():
 def contents():
     if request.args.get('device_id') == None:
         return jsonify({'success': False, 'msg': 'Invalid request!'})
-    device_id = request.args.get('device_id')
+    device = request.args.get('device_id')
     try:
         contents = models.Content.query \
-            .filter(models.Content.device_id == device_id) \
+            .filter(models.Content.device == device) \
             .all()
         data = []
         for content in contents:
@@ -230,13 +230,13 @@ def import_data():
     }
 
     filepath_devices = os.path.join(filepath, 'devices.csv')
-    docs = parse_func(
+    device_documents = parse_func(
         schema=schema,
         filepath=filepath_devices,
         lookup_indexes=valid_indexes,
         delimiter=delimiter
     )
-    if docs == False:
+    if device_documents == False:
         return jsonify({'success': False, 'msg': 'Invalid configuration provided for parsing devices csv file'})
 
     # content
@@ -284,21 +284,33 @@ def import_data():
     }
 
     filepath_content = os.path.join(filepath, 'content.csv')
-    docs = parse_func(
+    content_documents = parse_func(
         schema=schema,
         filepath=filepath_content,
         lookup_indexes=valid_indexes,
         delimiter=delimiter
     )
 
-    if docs == False:
+    if content_documents == False:
         return jsonify({'success': False, 'msg': 'Invalid configuration provided for parsing content csv file'})
 
-    print(docs)
-    return jsonify({'success':True})
     try:
-        device = models.Device(**{'name': ''})
-        db.session.add(device)
+        for device in device_documents:
+            existing_device = db.session.query(models.Device)\
+                .filter(models.Device.code == device['code']).\
+                first()
+
+            if existing_device:
+                device = existing_device
+            else:
+                device = models.Device(**device)
+            db.session.add(device)
+
+        db.session.commit()
+        for content in content_documents:
+            content = models.Content(**content)
+            db.session.add(content)
+
         db.session.commit()
         output = {'success': True, 'msg': 'Successfully imported!'}
     except AssertionError as e:

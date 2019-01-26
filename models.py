@@ -37,8 +37,8 @@ class Content(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String(100))
     description = Column(Text)
-    device_id = Column(Integer, ForeignKey("devices.id"))
-    device = relationship('Device', backref='content')
+    device = Column(Integer, ForeignKey("devices.id"))
+    device_relationship = relationship('Device', backref='contents')
 
     date_created = Column(DateTime(timezone=True), default=datetime.datetime.utcnow)
     date_updated = Column(DateTime(timezone=True), default=datetime.datetime.utcnow)
