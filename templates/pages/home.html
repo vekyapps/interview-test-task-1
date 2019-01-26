@@ -16,23 +16,26 @@
                     type: 'json',
                     rootProperty: 'data'
                 },
-                autoLoad: true
-            }
+            },
+            autoLoad: true
         });
 
 
         var devicesStore = Ext.create('Ext.data.Store', {
+            autoLoad: true,
+            remoteSort: true,
+            remoteFilter: true,
             fields: [
                 {
-                    name:'id',
-                    mapping:'id',
-                    type:'integer'
+                    name: 'id',
+                    mapping: 'id',
+                    type: 'integer'
                 }, {
-                    name:'name',
-                    mapping:'name'
+                    name: 'name',
+                    mapping: 'name'
                 }, {
-                    name:'code',
-                    mapping:'code'
+                    name: 'code',
+                    mapping: 'code'
                 }
             ],
             proxy: {
@@ -41,24 +44,24 @@
                 reader: {
                     type: 'json',
                     rootProperty: 'data'
-                },
-                autoLoad: true
+                }
             }
         });
 
 
         var contentStore = Ext.create('Ext.data.Store', {
+            autoLoad: false,
             fields: [
                 {
-                    name:'id',
-                    mapping:'id',
-                    type:'integer'
+                    name: 'id',
+                    mapping: 'id',
+                    type: 'integer'
                 }, {
-                    name:'name',
-                    mapping:'name'
+                    name: 'name',
+                    mapping: 'name'
                 }, {
-                    name:'code',
-                    mapping:'code'
+                    name: 'code',
+                    mapping: 'code'
                 }
             ],
             proxy: {
@@ -67,8 +70,7 @@
                 reader: {
                     type: 'json',
                     rootProperty: 'data'
-                },
-                autoLoad: false
+                }
             }
         });
 
@@ -93,8 +95,8 @@
                         {
                             xtype: 'grid',
                             title: 'Devices',
-                            height: 250,
-                            width: 250,
+                            flex: 1,
+                            height: 350,
                             store: devicesStore,
                             plugins: 'gridfilters',
                             selType: 'rowmodel',
@@ -104,8 +106,8 @@
                             viewConfig: {
                                 stripeRows: true
                             },
-                            listeners:{
-                                select:function(rowModel, record){
+                            listeners: {
+                                select: function (rowModel, record) {
                                     contentStore.getProxy().setExtraParam('device_id', record.get('id'));
                                     contentStore.load();
                                 }
@@ -137,10 +139,6 @@
                                 text: 'Updated',
                                 flex: 1
                             }, {
-                                dataIndex: 'expire_date',
-                                text: 'Expire',
-                                flex: 1
-                            }, {
                                 dataIndex: 'status',
                                 text: 'Status',
                                 flex: 1
@@ -148,6 +146,7 @@
                         }, {
                             xtype: 'grid',
                             flex: 1,
+                            height: 350,
                             title: 'Contents',
                             store: contentStore,
                             plugins: 'gridfilters',
@@ -209,7 +208,6 @@
                             multiSelect: false,
                             listeners: {
                                 select: function (grid, record) {
-
                                     function treeParse(record, dirList = '') {
                                         if (record.parentNode) {
                                             dirList += record.get('text') + '/' + treeParse(record.parentNode, dirList);
@@ -219,14 +217,22 @@
                                         }
                                     }
 
+                                    var labelPath = '';
                                     var path = treeParse(record);
                                     var panel = Ext.getCmp('mainPanel');
+                                    if (!panel) {
+                                        throw 'Cannot reach main panel!';
+                                    }
+                                    path = path.split('/');
+                                    path.reverse();
+                                    Ext.each(path, function (item) {
+                                        labelPath += item + '/'
+                                    });
+
                                     var importSourceField = panel.down('textfield[name="import_source"]');
-                                    importSourceField.setValue(path);
-                                    console.log(importSourceField);
+                                    importSourceField.setValue(labelPath);
                                 }
                             }
-
                         }, {
                             xtype: 'panel',
                             layout: {
@@ -238,7 +244,7 @@
                                 xtype: 'textfield',
                                 name: 'import_source',
                                 labelAlign: 'top',
-                                allowBlank: false,
+                                allowBlank: true,
                                 editable: false,
                                 flex: 1,
                                 fieldLabel: 'Import source'
@@ -246,7 +252,7 @@
                                 xtype: 'textfield',
                                 name: 'csv_separator',
                                 labelAlign: 'top',
-                                allowBlank: false,
+                                allowBlank: true,
                                 value: ',',
                                 flex: 1,
                                 fieldLabel: 'CSV separator'
@@ -258,27 +264,43 @@
                                     var panel = btn.up('panel');
                                     var importSourceField = panel.down('textfield[name="import_source"]');
                                     var csvSeparatorField = panel.down('textfield[name="csv_separator"]');
-                                    if (!importSourceField.getValue() || !csvSeparatorField.getValue()) {
+                                    if (!importSourceField || !csvSeparatorField) {
                                         return;
                                     }
                                     var obj = {
                                         import_source: importSourceField.getValue(),
                                         csv_sep: csvSeparatorField.getValue()
                                     };
-                                    console.log(obj);
+
                                     Ext.Ajax.request({
-                                        url: 'http://localhost/importData',
+                                        url: '/import',
                                         method: 'POST',
                                         params: obj,
                                         success: function (response, opts) {
                                             var obj = Ext.decode(response.responseText);
-                                            console.dir(obj);
+                                            if (obj && obj.success) {
+                                                var title;
+                                                var msg;
+                                                if (obj.success) {
+                                                    if (obj.msg) {
+                                                        msg = obj.msg;
+                                                    } else {
+                                                        msg = 'Successfully imported!';
+                                                    }
+                                                } else {
+                                                    if (obj.msg) {
+                                                        msg = obj.msg;
+                                                    } else {
+                                                        msg = 'Server-side error!';
+                                                    }
+                                                }
+                                                Ext.Msg.alert('Success', msg);
+                                            } else {
+                                                Ext.Msg.alert('Error', 'Server-side error!');
+                                            }
                                         },
-
                                         failure: function (response, opts) {
-                                            console.log(
-                                                'server-side failure with status code ' +
-                                                response.status);
+                                            Ext.Msg.alert('Error', 'Server-side error!');
                                         }
                                     });
                                 }
