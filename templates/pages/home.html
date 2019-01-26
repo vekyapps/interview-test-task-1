@@ -21,29 +21,55 @@
         });
 
 
-        var shows = Ext.create('Ext.data.Store', {
+        var devicesStore = Ext.create('Ext.data.Store', {
             fields: [
-                'id', 'show'
+                {
+                    name:'id',
+                    mapping:'id',
+                    type:'integer'
+                }, {
+                    name:'name',
+                    mapping:'name'
+                }, {
+                    name:'code',
+                    mapping:'code'
+                }
             ],
-            data: [{
-                id: 0,
-                show: 'Battlestar Galactica'
-            }, {
-                id: 1,
-                show: 'Doctor Who'
-            }, {
-                id: 2,
-                show: 'Farscape'
-            }, {
-                id: 3,
-                show: 'Firefly'
-            }, {
-                id: 4,
-                show: 'Star Trek'
-            }, {
-                id: 5,
-                show: 'Star Wars: Christmas Special'
-            }]
+            proxy: {
+                type: 'ajax',
+                url: '/devices',
+                reader: {
+                    type: 'json',
+                    rootProperty: 'data'
+                },
+                autoLoad: true
+            }
+        });
+
+
+        var contentStore = Ext.create('Ext.data.Store', {
+            fields: [
+                {
+                    name:'id',
+                    mapping:'id',
+                    type:'integer'
+                }, {
+                    name:'name',
+                    mapping:'name'
+                }, {
+                    name:'code',
+                    mapping:'code'
+                }
+            ],
+            proxy: {
+                type: 'ajax',
+                url: '/contents',
+                reader: {
+                    type: 'json',
+                    rootProperty: 'data'
+                },
+                autoLoad: false
+            }
         });
 
         Ext.create('Ext.Panel', {
@@ -69,7 +95,7 @@
                             title: 'Devices',
                             height: 250,
                             width: 250,
-                            store: shows,
+                            store: devicesStore,
                             plugins: 'gridfilters',
                             selType: 'rowmodel',
                             selModel: {
@@ -78,9 +104,15 @@
                             viewConfig: {
                                 stripeRows: true
                             },
+                            listeners:{
+                                select:function(rowModel, record){
+                                    contentStore.getProxy().setExtraParam('device_id', record.get('id'));
+                                    contentStore.load();
+                                }
+                            },
                             dockedItems: [{
                                 xtype: 'pagingtoolbar',
-                                store: shows, // same store GridPanel is using
+                                store: devicesStore,
                                 dock: 'bottom',
                                 displayInfo: true
                             }],
@@ -117,7 +149,7 @@
                             xtype: 'grid',
                             flex: 1,
                             title: 'Contents',
-                            store: shows,
+                            store: contentStore,
                             plugins: 'gridfilters',
                             selType: 'rowmodel',
                             selModel: {
@@ -128,7 +160,7 @@
                             },
                             dockedItems: [{
                                 xtype: 'pagingtoolbar',
-                                store: shows, // same store GridPanel is using
+                                store: contentStore,
                                 dock: 'bottom',
                                 displayInfo: true
                             }],
@@ -178,9 +210,9 @@
                             listeners: {
                                 select: function (grid, record) {
 
-                                    function treeParse(record, dirList='') {
+                                    function treeParse(record, dirList = '') {
                                         if (record.parentNode) {
-                                            dirList += record.get('text')+'/'+treeParse(record.parentNode, dirList);
+                                            dirList += record.get('text') + '/' + treeParse(record.parentNode, dirList);
                                             return dirList;
                                         } else {
                                             return '';
@@ -207,7 +239,7 @@
                                 name: 'import_source',
                                 labelAlign: 'top',
                                 allowBlank: false,
-                                editable:false,
+                                editable: false,
                                 flex: 1,
                                 fieldLabel: 'Import source'
                             }, {

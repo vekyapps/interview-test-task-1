@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
 import logging
 from logging import Formatter, FileHandler
 import os
@@ -10,6 +11,7 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 app = Flask(__name__)
 app.config.from_object('config')
 db = SQLAlchemy(app)
+
 
 from sqlalchemy import create_engine, exc
 from sqlalchemy.orm import scoped_session, sessionmaker, validates
@@ -32,7 +34,7 @@ app.logger.setLevel(logging.INFO)
 file_handler.setLevel(logging.INFO)
 app.logger.addHandler(file_handler)
 
-class Device(Base):
+class Device(db.Model):
     __tablename__ = 'devices'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(32), nullable=False)
@@ -51,7 +53,7 @@ class Device(Base):
 
         return name
 
-class Content(Base):
+class Content(db.Model):
     __tablename__ = 'contents'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100))
@@ -65,6 +67,7 @@ class Content(Base):
     status = db.Column(db.Enum('enabled', 'disabled', 'deleted'), nullable=False)
 
 Base.metadata.create_all(bind=engine)
+migrate = Migrate(app, db)
 
 @app.teardown_request
 def shutdown_session(exception=None):
@@ -75,11 +78,18 @@ def home():
     return render_template('pages/home.html')
 
 
-@app.route('/devices', methods=['POST'])
+@app.route('/devices', methods=['GET'])
 def devices():
     try:
-        db.session.commit()
-        output = {'success': True, 'data': 'Successfully imported!'}
+        devices = Device.query.all()
+        data = []
+        for device in devices:
+            data.append({
+                'id': device.id,
+                'name': device.name,
+                'code': device.code
+            })
+        output = {'success': True, 'data': data}
     except exc.SQLAlchemyError as e:
         app.logger.error('Cannot fetch data from database, error: '+str(e))
         output = {'success': False, 'msg': 'Cannot fetch data from database!'}
@@ -87,11 +97,22 @@ def devices():
     return jsonify(output)
 
 
-@app.route('/contents', methods=['POST'])
+@app.route('/contents', methods=['GET'])
 def contents():
+    if request.args.get('device_id') == None:
+        return jsonify({'success': False, 'msg': 'Invalid request!'})
+    device_id = request.args.get('device_id')
     try:
-        db.session.commit()
-        output = {'success': True, 'data': 'Successfully imported!'}
+        contents = Content.query\
+            .filter(Content.device_id == device_id)\
+            .all()
+        data = []
+        for content in contents:
+            data.append({
+                'id': content.id,
+                'name': content.name
+            })
+        output = {'success': True, 'data': data}
     except exc.SQLAlchemyError as e:
         app.logger.error('Cannot fetch data from database, error: '+str(e))
         output = {'success': False, 'msg': 'Cannot fetch data from database!'}
