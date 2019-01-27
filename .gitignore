@@ -6,3 +6,4 @@ database.db
 config.py
 /migrations/__pycache__/
 /migrations/versions/__pycache__/
+/routes/__pycache__/
