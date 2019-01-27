@@ -5,7 +5,7 @@ Repository that contains solution for my job interview
 # UI Screenshots
 
 Screenshot #1
-![Imgur Image](https://imgur.com/SspWo1p)
+[Imgur](https://i.imgur.com/SspWo1p.png)
 
 Screenshot #2
 ![Imgur Image](https://imgur.com/VWwKa9D)
