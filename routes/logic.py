@@ -218,7 +218,14 @@ def import_data():
         return jsonify({'success': False, 'msg': 'Invalid configuration provided for parsing content csv file'})
 
     try:
+        found_codes = []
         for device in device_documents:
+            if device['code'] in found_codes:
+                current_app.logger.error('Duplicate code: "%s" was found while parsing content csv file, filepath: "%s"'
+                                         % (device['code'], content_filepath))
+                continue
+
+            found_codes.append(device['code'])
             existing_device = db_session.query(models.Device)\
                 .filter(models.Device.code == device['code']).\
                 first()
