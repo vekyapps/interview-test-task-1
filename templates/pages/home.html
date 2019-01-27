@@ -39,10 +39,10 @@
                 }, {
                     name: 'status'
                 }, {
-                    name:'date_created'
+                    name: 'date_created'
                     //,renderer: Ext.util.Format.dateRenderer
                 }, {
-                    name:'date_updated'
+                    name: 'date_updated'
                 }
             ],
             proxy: {
@@ -71,7 +71,7 @@
                     name: 'date_updated'
                 }, {
                     name: 'status'
-                },{
+                }, {
                     name: 'description'
                 }, {
                     name: 'expire_date'
@@ -105,6 +105,100 @@
                         align: 'stretch'
                     },
                     items: [
+                        {
+                            xtype: 'form',
+                            id: 'devicesFilterForm',
+                            title: 'Devices filter',
+                            bodyPadding: 15,
+                            layout: 'column',
+                            items: [
+                                {
+                                    xtype: 'textfield',
+                                    name: 'code',
+                                    fieldLabel: 'Code',
+                                    columnWidth: .5,
+                                    margin: '0 10 0 0',
+                                    labelAlign: 'top'
+                                }, {
+                                    xtype: 'textfield',
+                                    name: 'name',
+                                    fieldLabel: 'Name',
+                                    columnWidth: .5,
+                                    labelAlign: 'top'
+                                }, {
+                                    xtype: 'textfield',
+                                    name: 'description',
+                                    fieldLabel: 'Description',
+                                    margin: '0 10 0 0',
+                                    columnWidth: .5,
+                                    labelAlign: 'top'
+                                }, {
+                                    xtype: 'combobox',
+                                    name: 'status',
+                                    fieldLabel: 'Status',
+                                    columnWidth: .5,
+                                    queryMode: 'local',
+                                    displayField: 'value',
+                                    valueField: 'value',
+                                    store: {
+                                        fields: ['value'],
+                                        data: [
+                                            {"value": "enabled"},
+                                            {"value": "disabled"},
+                                            {"value": "deleted"}
+                                        ]
+                                    },
+                                    labelAlign: 'top'
+                                }, {
+                                    xtype: 'datefield',
+                                    name: 'created_from',
+                                    margin: '0 10 0 0',
+                                    format: 'd.m.Y.',
+                                    submitFormat: 'Y-m-d',
+                                    fieldLabel: 'Created from',
+                                    columnWidth: .5,
+                                    labelAlign: 'top'
+                                }, {
+                                    xtype: 'datefield',
+                                    name: 'created_to',
+                                    fieldLabel: 'Created to',
+                                    format: 'd.m.Y.',
+                                    submitFormat: 'Y-m-d',
+                                    columnWidth: .5,
+                                    labelAlign: 'top'
+                                }, {
+                                    xtype: 'datefield',
+                                    name: 'updated_from',
+                                    margin: '0 10 0 0',
+                                    format: 'd.m.Y.',
+                                    submitFormat: 'Y-m-d',
+                                    fieldLabel: 'Updated from',
+                                    columnWidth: .5,
+                                    labelAlign: 'top'
+                                }, {
+                                    xtype: 'datefield',
+                                    name: 'updated_to',
+                                    format: 'd.m.Y.',
+                                    submitFormat: 'Y-m-d',
+                                    fieldLabel: 'Updated to',
+                                    columnWidth: .5,
+                                    labelAlign: 'top'
+                                }, {
+                                    xtype: 'button',
+                                    text: 'Filter',
+                                    margin: '10 0 0 0',
+                                    columnWidth: .1,
+                                    handler: function (btn) {
+                                        var form = btn.up('form');
+                                        devicesStore.getProxy().setExtraParam('query', Ext.encode(form.getValues()));
+                                        devicesStore.load();
+                                    }
+                                }
+                            ],
+                            flex: 1,
+                            collapsible: true,
+                            collapsed: true,
+                        },
                         {
                             xtype: 'grid',
                             title: 'Devices',
@@ -158,6 +252,109 @@
                                 text: 'Status',
                                 flex: 1
                             }]
+                        }, {
+                            xtype: 'form',
+                            id: 'contentFilterForm',
+                            title: 'Content filter',
+                            bodyPadding: 15,
+                            layout: 'column',
+                            items: [
+                                {
+                                    xtype: 'textfield',
+                                    name: 'name',
+                                    margin: '0 10 0 0',
+                                    fieldLabel: 'Name',
+                                    columnWidth: .5,
+                                    labelAlign: 'top'
+                                }, {
+                                    xtype: 'textfield',
+                                    name: 'description',
+                                    fieldLabel: 'Description',
+                                    columnWidth: .5,
+                                    labelAlign: 'top'
+                                }, {
+                                    xtype: 'combobox',
+                                    name: 'status',
+                                    fieldLabel: 'Status',
+                                    columnWidth: 1,
+                                    queryMode: 'local',
+                                    displayField: 'value',
+                                    valueField: 'value',
+                                    store: {
+                                        fields: ['value'],
+                                        data: [
+                                            {"value": "enabled"},
+                                            {"value": "disabled"},
+                                            {"value": "deleted"}
+                                        ]
+                                    },
+                                    labelAlign: 'top'
+                                }, {
+                                    xtype: 'datefield',
+                                    name: 'created_from',
+                                    margin: '0 10 0 0',
+                                    format: 'd.m.Y.',
+                                    submitFormat: 'Y-m-d',
+                                    fieldLabel: 'Created from',
+                                    columnWidth: .5,
+                                    labelAlign: 'top'
+                                }, {
+                                    xtype: 'datefield',
+                                    name: 'created_to',
+                                    fieldLabel: 'Created to',
+                                    format: 'd.m.Y.',
+                                    submitFormat: 'Y-m-d',
+                                    columnWidth: .5,
+                                    labelAlign: 'top'
+                                }, {
+                                    xtype: 'datefield',
+                                    name: 'updated_from',
+                                    margin: '0 10 0 0',
+                                    format: 'd.m.Y.',
+                                    submitFormat: 'Y-m-d',
+                                    fieldLabel: 'Updated from',
+                                    columnWidth: .5,
+                                    labelAlign: 'top'
+                                }, {
+                                    xtype: 'datefield',
+                                    name: 'updated_to',
+                                    format: 'd.m.Y.',
+                                    submitFormat: 'Y-m-d',
+                                    fieldLabel: 'Updated to',
+                                    columnWidth: .5,
+                                    labelAlign: 'top'
+                                }, {
+                                    xtype: 'datefield',
+                                    name: 'expire_date_from',
+                                    margin: '0 10 0 0',
+                                    format: 'd.m.Y.',
+                                    submitFormat: 'Y-m-d',
+                                    fieldLabel: 'Expire date from',
+                                    columnWidth: .5,
+                                    labelAlign: 'top'
+                                }, {
+                                    xtype: 'datefield',
+                                    name: 'expire_date_to',
+                                    format: 'd.m.Y.',
+                                    submitFormat: 'Y-m-d',
+                                    fieldLabel: 'Expire date to',
+                                    columnWidth: .5,
+                                    labelAlign: 'top'
+                                }, {
+                                    xtype: 'button',
+                                    text: 'Filter',
+                                    margin: '10 0 0 0',
+                                    columnWidth: .1,
+                                    handler: function (btn) {
+                                        var form = btn.up('form');
+                                        contentStore.getProxy().setExtraParam('query', Ext.encode(form.getValues()));
+                                        contentStore.load();
+                                    }
+                                }
+                            ],
+                            flex: 1,
+                            collapsible: true,
+                            collapsed: true,
                         }, {
                             xtype: 'grid',
                             id: 'contentGrid',

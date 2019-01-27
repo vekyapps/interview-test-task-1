@@ -39,8 +39,6 @@ def shutdown_session(exception=None):
 
 ###################### LOGIC
 
-
-
 @app.route('/')
 def home():
     return render_template('pages/home.html')
@@ -48,17 +46,36 @@ def home():
 
 @app.route('/devices', methods=['GET'])
 def devices():
-    try:
-        search = False
-        q = request.args.get('q')
-        if q:
-            search = True
+    g = utility.request_parse(request)
+    cols = [x.name for x in models.Device.__table__.columns]
 
-        page = request.args.get('page', type=int, default=1)
-        query = models.Device.query.all()
+    try:
+        total = models.Device.query
+        query = models.Device.query
+        if 'query' in g:
+            query_properties = g['query']
+            for property, value in query_properties.items():
+                if property in cols:
+                    query = query.filter(getattr(models.Device, property).like("%%%s%%" % value))
+                else:
+                    if len(value) == 0:
+                        continue
+                    if property == 'created_from':
+                        query = query.filter(models.Device.date_created >= value)
+                    if property == 'created_to':
+                        query = query.filter(models.Device.date_created <= value)
+                    if property == 'updated_from':
+                        query = query.filter(models.Device.date_updated >= value)
+                    if property == 'updated_to':
+                        query = query.filter(models.Device.date_updated <= value)
+
+        query = query.offset((g['page']-1)*g['limit']) \
+            .limit(g['limit'])
+        devices = query.all()
+        total = total.count()
 
         data = []
-        for device in query:
+        for device in devices:
             data.append({
                 'id': device.id,
                 'name': device.name,
@@ -68,7 +85,7 @@ def devices():
                 'date_updated': device.date_updated,
                 'status': device.status
             })
-        output = {'success': True, 'data': data}
+        output = {'success': True, 'data': data, 'total': total}
     except exc.SQLAlchemyError as e:
         app.logger.error('Cannot fetch data from database, error: ' + str(e))
         output = {'success': False, 'msg': 'Cannot fetch data from database!'}
@@ -81,6 +98,10 @@ def contents():
     if request.args.get('device_id') == None:
         return jsonify({'success': False, 'msg': 'Invalid request!'})
     device = request.args.get('device_id')
+
+    g = utility.request_parse(request)
+    cols = [x.name for x in models.Content.__table__.columns]
+
     try:
         contents = models.Content.query \
             .filter(models.Content.device == device) \

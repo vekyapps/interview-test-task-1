@@ -1,8 +1,35 @@
 import os
 import csv
+import json
 
 from dateutil.parser import parse
 from cerberus import Validator
+
+def request_parse(request, show_per_page = 20):
+    if not hasattr(request, 'args'):
+        return None
+
+    request_config = {}
+    valid_args = ['page', 'limit', 'sort', 'query']
+    for arg, value in request.args.items():
+        if arg in valid_args:
+            request_config[arg] = value
+
+    if 'limit' in request_config:
+        request_config['limit'] = int(request_config['limit'])
+    else:
+        request_config['limit'] = show_per_page
+
+    if 'page' in request_config:
+        request_config['page'] = int(request_config['page'])
+
+    if 'sort' in request_config:
+        request_config['sort'] = json.loads(request_config['sort'])
+
+    if 'query' in request_config:
+        request_config['query'] = json.loads(request_config['query'])
+
+    return request_config
 
 
 def int_convert(value):
