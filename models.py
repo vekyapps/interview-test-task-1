@@ -4,7 +4,13 @@ from sqlalchemy import Column, Integer, String, DateTime, Enum, ForeignKey, Text
 from sqlalchemy.orm import validates, relationship
 from database import Base
 
-class Device(Base):
+from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
+
+db = SQLAlchemy()
+migrate = Migrate()
+
+class Device(db.Model):
     __tablename__ = 'devices'
     id = Column(Integer, primary_key=True)
     name = Column(String(32), nullable=False)
@@ -32,7 +38,7 @@ class Device(Base):
 
         return code
 
-class Content(Base):
+class Content(db.Model):
     __tablename__ = 'contents'
     id = Column(Integer, primary_key=True)
     name = Column(String(100))
