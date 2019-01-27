@@ -8,4 +8,4 @@ Screenshot #1
 [Imgur](https://i.imgur.com/SspWo1p.png)
 
 Screenshot #2
-![Imgur Image](https://imgur.com/VWwKa9D)
+[Imgur](https://i.imgur.com/VWwKa9D.png)
