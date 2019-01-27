@@ -40,7 +40,6 @@
                     name: 'status'
                 }, {
                     name: 'date_created'
-                    //,renderer: Ext.util.Format.dateRenderer
                 }, {
                     name: 'date_updated'
                 }
@@ -55,9 +54,10 @@
             }
         });
 
-
         var contentStore = Ext.create('Ext.data.Store', {
             autoLoad: false,
+            remoteSort: true,
+            remoteFilter: true,
             fields: [
                 {
                     name: 'id',
@@ -90,7 +90,7 @@
         Ext.create('Ext.Panel', {
             id: 'mainPanel',
             renderTo: 'mainPanelContainer',
-            width: 800,
+            width: '100%',
             title: 'Devices & contents',
             layout: {
                 type: 'hbox',
@@ -117,17 +117,23 @@
                                     name: 'code',
                                     fieldLabel: 'Code',
                                     columnWidth: .5,
+                                    maxLength: 32,
+                                    enforceMaxLength: true,
                                     margin: '0 10 0 0',
                                     labelAlign: 'top'
                                 }, {
                                     xtype: 'textfield',
                                     name: 'name',
+                                    maxLength: 30,
+                                    enforceMaxLength: true,
                                     fieldLabel: 'Name',
                                     columnWidth: .5,
                                     labelAlign: 'top'
                                 }, {
                                     xtype: 'textfield',
                                     name: 'description',
+                                    maxLength: 255,
+                                    enforceMaxLength: true,
                                     fieldLabel: 'Description',
                                     margin: '0 10 0 0',
                                     columnWidth: .5,
@@ -197,7 +203,7 @@
                             ],
                             flex: 1,
                             collapsible: true,
-                            collapsed: true,
+                            collapsed: true
                         },
                         {
                             xtype: 'grid',
@@ -241,11 +247,13 @@
                                 flex: 1
                             }, {
                                 dataIndex: 'date_created',
+                                renderer: Ext.util.Format.dateRenderer('H:i:s d.m.Y'),
                                 text: 'Created',
                                 flex: 1
                             }, {
                                 dataIndex: 'date_updated',
                                 text: 'Updated',
+                                renderer: Ext.util.Format.dateRenderer('H:i:s d.m.Y'),
                                 flex: 1
                             }, {
                                 dataIndex: 'status',
@@ -264,6 +272,8 @@
                                     name: 'name',
                                     margin: '0 10 0 0',
                                     fieldLabel: 'Name',
+                                    maxLength: 100,
+                                    enforceMaxLength: true,
                                     columnWidth: .5,
                                     labelAlign: 'top'
                                 }, {
@@ -388,14 +398,17 @@
                             }, {
                                 dataIndex: 'date_created',
                                 text: 'Created',
+                                renderer: Ext.util.Format.dateRenderer('H:i:s d.m.Y'),
                                 flex: 1
                             }, {
                                 dataIndex: 'date_updated',
                                 text: 'Updated',
+                                renderer: Ext.util.Format.dateRenderer('H:i:s d.m.Y'),
                                 flex: 1
                             }, {
                                 dataIndex: 'expire_date',
                                 text: 'Expire date',
+                                renderer: Ext.util.Format.dateRenderer('H:i:s d.m.Y'),
                                 flex: 1
                             }, {
                                 dataIndex: 'status',
@@ -415,7 +428,7 @@
                         {
                             xtype: 'treepanel',
                             id: 'treePanel',
-                            title: 'Folder structure',
+                            title: 'Folder structure (relative to the uploads folder)',
                             flex: 1,
                             useArrows: false,
                             rootVisible: false,
@@ -424,7 +437,7 @@
                             listeners: {
                                 select: function (grid, record) {
                                     function treeParse(record, dirList = '') {
-                                        if (record.parentNode) {
+                                        if (record.parentNode && !record.isLeaf()) {
                                             dirList += record.get('text') + '/' + treeParse(record.parentNode, dirList);
                                             return dirList;
                                         } else {
@@ -494,30 +507,21 @@
                                         success: function (response, opts) {
                                             var obj = Ext.decode(response.responseText);
                                             importSourceField.setValue(null);
-                                            Ext.getCmp('devicesGrid').getSelectionModel().deselectAll();
-                                            Ext.getCmp('treePanel').getSelectionModel().deselectAll();
-                                            Ext.getCmp('contentGrid').setDisabled(true);
-                                            contentStore.removeAll();
-                                            if (obj && obj.success) {
-                                                var title;
-                                                var msg;
-                                                if (obj.success) {
-                                                    if (obj.msg) {
-                                                        msg = obj.msg;
-                                                    } else {
-                                                        msg = 'Successfully imported!';
-                                                    }
-                                                } else {
-                                                    if (obj.msg) {
-                                                        msg = obj.msg;
-                                                    } else {
-                                                        msg = 'Server-side error!';
-                                                    }
-                                                }
-                                                Ext.Msg.alert('Success', msg);
-                                            } else {
-                                                Ext.Msg.alert('Error', 'Server-side error!');
+                                            var panel = Ext.getCmp('mainPanel');
+                                            if (!panel) {
+                                                throw 'Cannot reach main panel!';
                                             }
+                                            panel.totalGridFilterReset();
+                                            var title;
+                                            var msg;
+                                            if (obj && obj.success) {
+                                                title = 'Success';
+                                                msg = obj.message ? obj.message : 'Successfully imported!';
+                                            } else {
+                                                title = 'Error';
+                                                msg = obj.message ? obj.message : 'Server-side error!';
+                                            }
+                                            Ext.Msg.alert(title, msg);
                                         },
                                         failure: function (response, opts) {
                                             Ext.Msg.alert('Error', 'Server-side error!');
@@ -528,7 +532,32 @@
                         }
                     ]
                 }
-            ]
+            ],
+            devicesGridAndFilterReset: function () {
+                var devicesGrid = Ext.getCmp('devicesGrid');
+                var devicesStore = devicesGrid.getStore();
+                devicesGrid.getSelectionModel().deselectAll();
+                devicesStore.getProxy().extraParams = {};
+                devicesStore.removeAll();
+                devicesStore.load();
+
+                Ext.getCmp('devicesFilterForm').getForm().reset();
+                Ext.getCmp('contentGrid').setDisabled(true);
+            },
+            contentGridAndFilterReset: function () {
+                var contentGrid = Ext.getCmp('contentGrid');
+                var contentStore = contentGrid.getStore();
+                contentGrid.getSelectionModel().deselectAll();
+
+                contentStore.getProxy().extraParams = {};
+                contentStore.removeAll();
+                Ext.getCmp('contentFilterForm').getForm().reset();
+            },
+            totalGridFilterReset: function () {
+                var me = this;
+                me.devicesGridAndFilterReset();
+                me.contentGridAndFilterReset();
+            }
         });
     });
 </script>
