@@ -1,13 +1,14 @@
-from flask import Blueprint, render_template, current_app
-from sqlalchemy import exc
-import models
-
 import os
 import datetime
 
+from flask import Blueprint, current_app, \
+    render_template, request, jsonify
+
+from sqlalchemy import exc
+
+import models
 import utility
 
-from flask import render_template, request, jsonify
 from database import db_session
 
 # Dummy blueprint that holds all routes

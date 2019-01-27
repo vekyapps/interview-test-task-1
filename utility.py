@@ -111,7 +111,6 @@ def int_convert(value):
 
     return None
 
-
 def date_convert(value):
     try:
         date = parse(value)
@@ -119,7 +118,6 @@ def date_convert(value):
         date = None
 
     return date
-
 
 def csv_file_parse_func(**kwargs):
     if ('schema' not in kwargs or
