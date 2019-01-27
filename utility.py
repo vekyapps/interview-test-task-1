@@ -5,7 +5,6 @@ import json
 from dateutil.parser import parse
 from cerberus import Validator
 
-
 def request_parse(request, show_per_page=20):
     if not hasattr(request, 'args'):
         return None
@@ -37,6 +36,13 @@ def query_config(**kwargs):
     model = kwargs['model']
     logger = kwargs['logger']
 
+    if 'special_cases' in kwargs:
+        special_cases = kwargs['special_cases']
+        special_cases_keys = special_cases.keys()
+    else:
+        special_cases = {}
+        special_cases_keys = []
+
     table = getattr(model, '__table__')
     cols = [x.name for x in getattr(table, 'columns')]
 
@@ -47,26 +53,38 @@ def query_config(**kwargs):
 
     total = base_query
     query = base_query
-    g = kwargs['g']
-    if 'query' in g:
-        query_properties = g['query']
+    if 'request_filtered_args' not in kwargs:
+        return {'query': query, 'total': total.count()}
+
+    request_filtered_args = kwargs['request_filtered_args']
+    if 'query' in request_filtered_args:
+        query_properties = request_filtered_args['query']
         for property, value in query_properties.items():
             if len(value) == 0:
                 continue
             if property in cols:
                 query = query.filter(getattr(model, property).like("%s%%%%" % value))
-            else:
-                if property == 'created_from':
-                    query = query.filter(model.date_created >= value)
-                if property == 'created_to':
-                    query = query.filter(model.date_created <= value)
-                if property == 'updated_from':
-                    query = query.filter(model.date_updated >= value)
-                if property == 'updated_to':
-                    query = query.filter(model.date_updated <= value)
+            else: # special cases such as: date range validations, etc.
+                if property in special_cases_keys:
+                    abc = special_cases[property]
+                    field = abc['field']
+                    operand1 = getattr(model, field)
+                    operator = abc['operator']
+                    if operator == '<':
+                        query = query.filter(operand1 < value)
+                    elif operator == '>':
+                        query = query.filter(operand1 > value)
+                    elif operator == '<=':
+                        query = query.filter(operand1 <= value)
+                    elif operator == '>=':
+                        query = query.filter(operand1 >= value)
+                    elif operator == '=':
+                        query = query.filter(operand1 == value)
+                    else: # unknown operator
+                        continue
 
-    if 'sort' in g:
-        sort_properties = g['sort']
+    if 'sort' in request_filtered_args:
+        sort_properties = request_filtered_args['sort']
         for item in sort_properties:
             if item['property'] not in cols:
                 logger.warning('Query ordering by unknown column: "%s"' % item['property'])
@@ -76,8 +94,8 @@ def query_config(**kwargs):
             else:
                 query = query.order_by(getattr(model, item['property']).desc())
 
-    query = query.offset((g['page'] - 1) * g['limit']) \
-        .limit(g['limit'])
+    query = query.offset((request_filtered_args['page'] - 1) * request_filtered_args['limit']) \
+        .limit(request_filtered_args['limit'])
 
     return {'query': query, 'total': total.count()}
 
@@ -101,20 +119,17 @@ def parse_func(**kwargs):
     if ('schema' not in kwargs or
             'lookup_indexes' not in kwargs or
             'filepath' not in kwargs or
-            'logger' not in kwargs):
+            'logger' not in kwargs or
+            'delimiter' not in kwargs):
         return False
 
     filepath = kwargs['filepath']
     logger = kwargs['logger']
+    delimiter = kwargs['delimiter']
     if (not os.path.isfile(filepath) or
             not os.access(filepath, os.R_OK)):
         logger.error('Filepath: "%s" does not exists or not accessible!' % filepath)
         return False
-
-    if 'delimiter' in kwargs:
-        delimiter = kwargs['delimiter']
-    else:
-        delimiter = ','
 
     v = Validator(kwargs['schema'])
     valid_documents = []

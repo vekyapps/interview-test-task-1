@@ -20,16 +20,34 @@ def home():
 
 @main_blueprint.route('/devices', methods=['GET'])
 def devices():
-    g = utility.request_parse(request)
+    request_filtered_args = utility.request_parse(request)
 
     try:
-        c = utility.query_config(
-            g=g,
+        filtered_query = utility.query_config(
+            request_filtered_args=request_filtered_args,
             model=models.Device,
-            logger=current_app.logger
+            logger=current_app.logger,
+            special_cases={
+                'created_from': {
+                    'field': 'date_created',
+                    'operator': '>='
+                },
+                'created_to': {
+                    'field': 'date_created',
+                    'operator': '<='
+                },
+                'updated_from': {
+                    'field': 'date_updated',
+                    'operator': '>='
+                },
+                'updated_to': {
+                    'field': 'date_updated',
+                    'operator': '<='
+                }
+            }
         )
-        devices = c['query'].all()
-        total = c['total']
+        devices = filtered_query['query'].all()
+        total = filtered_query['total']
 
         data = []
         for device in devices:
@@ -54,22 +72,48 @@ def devices():
 def contents():
     if request.args.get('device_id') == None:
         return jsonify({'success': False, 'msg': 'Invalid request!'})
-    device = request.args.get('device_id')
 
-    g = utility.request_parse(request)
+    device = request.args.get('device_id')
+    request_filtered_args = utility.request_parse(request)
 
     try:
         base_query = models.Content.query \
             .filter(models.Content.device == device)
 
-        c = utility.query_config(
-            g=g,
+        filtered_query = utility.query_config(
+            request_filtered_args=request_filtered_args,
             model=models.Content,
             logger=current_app.logger,
-            base_query=base_query
+            base_query=base_query,
+            special_cases={
+                'created_from': {
+                    'field': 'date_created',
+                    'operator': '>='
+                },
+                'created_to': {
+                    'field': 'date_created',
+                    'operator': '<='
+                },
+                'updated_from': {
+                    'field': 'date_updated',
+                    'operator': '>='
+                },
+                'updated_to': {
+                    'field': 'date_updated',
+                    'operator': '<='
+                },
+                'expire_date_from': {
+                    'field': 'expire_date',
+                    'operator': '>='
+                },
+                'expire_date_to': {
+                    'field': 'expire_date',
+                    'operator': '<='
+                }
+            }
         )
-        contents = c['query'].all()
-        total = c['total']
+        contents = filtered_query['query'].all()
+        total = filtered_query['total']
 
         data = []
         for content in contents:
@@ -84,7 +128,8 @@ def contents():
             })
         output = {'success': True, 'data': data, 'total': total}
     except exc.SQLAlchemyError as e:
-        current_app.logger.error('Cannot content data for device_id: %s fetch data from database, error: %s' % (str(device), e))
+        current_app.logger.error(
+            'Cannot content data for device_id: %s fetch data from database, error: %s' % (str(device), e))
         output = {'success': False, 'msg': 'Cannot fetch data from database! Database error.'}
 
     return jsonify(output)
@@ -95,12 +140,14 @@ def import_data():
     filepath = os.path.join(current_app.config.get('BASEDIR'), 'uploads')
     import_source = request.form.get('import_source')
     if not import_source == None:
-        import_source = import_source.replace('/', os.sep) # Let's be OS independent! Maybe we switch on Windows server one day :)
+        import_source = import_source.replace('/', os.sep)  # Let's be OS independent! Maybe we switch on Windows server one day :)
         filepath = os.path.join(filepath, import_source)
 
     delimiter = request.form.get('csv_separator')
     if delimiter == None:
-        delimiter = ','
+        delimiter = current_app.config.get('DEFAULT_CSV_SEPARATOR')
+        if delimiter == None:
+            delimiter = ','
 
     schema = {
         'id': {
@@ -127,7 +174,7 @@ def import_data():
         }
     }
 
-    valid_indexes = {
+    lookup_indexes = {
         0: {
             'name': 'id',
             'convert_function': utility.int_convert
@@ -150,13 +197,13 @@ def import_data():
     device_documents = utility.parse_func(
         schema=schema,
         filepath=devices_filepath,
-        lookup_indexes=valid_indexes,
+        lookup_indexes=lookup_indexes,
         delimiter=delimiter,
         logger=current_app.logger
     )
     if device_documents == False:
         current_app.logger.error('Invalid configuration provided for parsing content csv file, filepath: "%s"'
-                         % devices_filepath)
+                                 % devices_filepath)
         return jsonify({'success': False, 'msg': 'Invalid configuration provided for parsing devices csv file'})
 
     # content
@@ -183,7 +230,7 @@ def import_data():
         }
     }
 
-    valid_indexes = {
+    lookup_indexes = {
         1: {
             'name': 'name'
         },
@@ -207,14 +254,14 @@ def import_data():
     content_documents = utility.parse_func(
         schema=schema,
         filepath=content_filepath,
-        lookup_indexes=valid_indexes,
+        lookup_indexes=lookup_indexes,
         delimiter=delimiter,
         logger=current_app.logger
     )
 
     if content_documents == False:
         current_app.logger.error('Invalid configuration provided for parsing content csv file, filepath: "%s"'
-                         % content_filepath)
+                                 % content_filepath)
         return jsonify({'success': False, 'msg': 'Invalid configuration provided for parsing content csv file'})
 
     try:
@@ -226,8 +273,8 @@ def import_data():
                 continue
 
             found_codes.append(device['code'])
-            existing_device = db_session.query(models.Device)\
-                .filter(models.Device.code == device['code']).\
+            existing_device = db_session.query(models.Device) \
+                .filter(models.Device.code == device['code']). \
                 first()
 
             if existing_device:
@@ -260,6 +307,7 @@ def import_data():
         output = {'success': False, 'msg': 'Database error!'}
 
     return jsonify(output)
+
 
 @main_blueprint.route('/folders', methods=['GET'])
 def get_folders():
