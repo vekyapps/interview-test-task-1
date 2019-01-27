@@ -194,7 +194,7 @@ def import_data():
     }
 
     devices_filepath = os.path.join(filepath, 'devices.csv')
-    device_documents = utility.parse_func(
+    device_documents = utility.csv_file_parse_func(
         schema=schema,
         filepath=devices_filepath,
         lookup_indexes=lookup_indexes,
@@ -251,7 +251,7 @@ def import_data():
     }
 
     content_filepath = os.path.join(filepath, 'content.csv')
-    content_documents = utility.parse_func(
+    content_documents = utility.csv_file_parse_func(
         schema=schema,
         filepath=content_filepath,
         lookup_indexes=lookup_indexes,

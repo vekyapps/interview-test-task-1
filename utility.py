@@ -66,20 +66,26 @@ def query_config(**kwargs):
                 query = query.filter(getattr(model, property).like("%s%%%%" % value))
             else: # special cases such as: date range validations, etc.
                 if property in special_cases_keys:
-                    abc = special_cases[property]
-                    field = abc['field']
-                    operand1 = getattr(model, field)
-                    operator = abc['operator']
+                    case = special_cases[property]
+                    if 'field' not in case or 'operator' not in case:
+                        continue
+
+                    if not hasattr(model, field):
+                        continue
+
+                    field = case['field']
+                    first_operand = getattr(model, field)
+                    operator = case['operator']
                     if operator == '<':
-                        query = query.filter(operand1 < value)
+                        query = query.filter(first_operand < value)
                     elif operator == '>':
-                        query = query.filter(operand1 > value)
+                        query = query.filter(first_operand > value)
                     elif operator == '<=':
-                        query = query.filter(operand1 <= value)
+                        query = query.filter(first_operand <= value)
                     elif operator == '>=':
-                        query = query.filter(operand1 >= value)
+                        query = query.filter(first_operand >= value)
                     elif operator == '=':
-                        query = query.filter(operand1 == value)
+                        query = query.filter(first_operand == value)
                     else: # unknown operator
                         continue
 
@@ -115,7 +121,7 @@ def date_convert(value):
     return date
 
 
-def parse_func(**kwargs):
+def csv_file_parse_func(**kwargs):
     if ('schema' not in kwargs or
             'lookup_indexes' not in kwargs or
             'filepath' not in kwargs or
