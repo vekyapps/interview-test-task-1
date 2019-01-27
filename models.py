@@ -44,3 +44,12 @@ class Content(Base):
     date_updated = Column(DateTime(timezone=True), default=datetime.datetime.utcnow)
     expire_date = Column(DateTime(timezone=True), default=datetime.datetime.utcnow)
     status = Column(Enum('enabled', 'disabled', 'deleted'), nullable=False)
+
+    @validates('name')
+    def validate_username(self, key, name):
+        if not name:
+            raise AssertionError('No name provided')
+        if len(name) > 100:
+            raise AssertionError('Name can contain max. 100 chars.')
+
+        return name
